@@ -2,6 +2,7 @@ package main
 
 import (
 	feature1 "Study/feature"
+	"Study/feature2"
 	"context"
 	"fmt"
 	"time"
@@ -56,4 +57,5 @@ func main() {
 	time.Sleep(2 * time.Second)
 
 	feature1.Feature1()
+	feature2.Feature2()
 }
