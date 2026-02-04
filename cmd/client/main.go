@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gorilla/mux"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -44,9 +45,11 @@ type StockResponse struct {
 
 // GetStockHandler - обработчик HTTP запроса для получения количества товара
 func (g *GatewayServer) GetStockHandler(w http.ResponseWriter, r *http.Request) {
-	productID := r.URL.Query().Get("product_id")
+	// Извлекаем product_id из параметра маршрута
+	vars := mux.Vars(r)
+	productID := vars["id"]
 	if productID == "" {
-		http.Error(w, "Необходим параметр product_id", http.StatusBadRequest)
+		http.Error(w, "Необходим параметр id в маршруте", http.StatusBadRequest)
 		return
 	}
 
@@ -80,19 +83,22 @@ func main() {
 	gateway := NewGatewayServer()
 
 	// Подключение к gRPC сервису
-	if err := gateway.ConnectToGRPC("localhost:50051"); err != nil {
-		slog.Error("Ошибка подключения к gRPC сервису", "error", err)
+	// В Docker используем имя сервиса, локально - localhost
+	grpcAddress := "inventory-server:50051" // Имя сервиса в docker-compose
+	// grpcAddress := "localhost:50051" // Для локального запуска
+	if err := gateway.ConnectToGRPC(grpcAddress); err != nil {
+		slog.Error("Ошибка подключения к gRPC сервису", "error", err, "address", grpcAddress)
 		os.Exit(1)
 	}
 
-	// Настройка HTTP маршрутов
-	mux := http.NewServeMux()
-	mux.HandleFunc("/stock", gateway.GetStockHandler)
+	// Настройка HTTP маршрутов с использованием gorilla/mux
+	router := mux.NewRouter()
+	router.HandleFunc("/stock/{id}", gateway.GetStockHandler).Methods("GET")
 
 	// Создание HTTP сервера
 	server := &http.Server{
 		Addr:    ":8080",
-		Handler: mux,
+		Handler: router,
 	}
 
 	slog.Info("REST шлюз запущен", "address", server.Addr)

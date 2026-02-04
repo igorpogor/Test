@@ -47,10 +47,13 @@
 
 ### Предварительные Требования
 - Go 1.25+
-- Компилятор Protocol Buffer (protoc)
-- Плагины gRPC для Go
+- Protocol Buffer Compiler (protoc)
+- gRPC Go plugins
+- Docker и Docker Compose (для контейнерного запуска)
 
 ### Запуск Сервисов
+
+#### Вариант 1: Локальный запуск (без Docker)
 
 1. **Запуск gRPC Сервера**:
 ```bash
@@ -62,11 +65,24 @@ go run cmd/server/main.go
 go run cmd/client/main.go
 ```
 
+#### Вариант 2: Запуск с Docker (рекомендуется)
+
+```bash
+# Собрать и запустить оба сервиса одной командой
+docker-compose up --build
+
+# Для запуска в фоновом режиме
+docker-compose up --build -d
+
+# Для остановки сервисов
+docker-compose down
+```
+
 ### Тестирование API
 
 ```bash
-# Получить количество товара product1
-curl "http://localhost:8080/stock?product_id=product1"
+# Получить количество товара product1 (новый маршрут с параметром в пути)
+curl "http://localhost:8080/stock/product1"
 
 # Ожидаемый ответ:
 # {"product_id":"product1","quantity":100}
@@ -86,7 +102,21 @@ curl "http://localhost:8080/stock?product_id=product1"
 
 - **Отсутствует Параметр**:
 ```json
-{"error":"Необходим параметр product_id"}
+{"error":"Необходим параметр id в маршруте"}
+```
+
+### Docker Конфигурация
+
+- **Dockerfile.server**: Конфигурация для сборки gRPC сервера
+- **Dockerfile.client**: Конфигурация для сборки REST шлюза
+- **docker-compose.yml**: Оркестрация обоих сервисов с сетью
+
+```bash
+# Посмотреть логи работающих контейнеров
+docker-compose logs -f
+
+# Пересобрать и перезапустить сервисы
+docker-compose up --build --force-recreate
 ```
 
 ## Технические Особенности

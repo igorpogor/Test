@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  # gRPC сервер инвентаря
+  inventory-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    container_name: inventory-server
+    ports:
+      - "50051:50051"
+    networks:
+      - inventory-network
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Moscow
+
+  # REST Gateway
+  inventory-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    container_name: inventory-gateway
+    ports:
+      - "8080:8080"
+    networks:
+      - inventory-network
+    depends_on:
+      - inventory-server
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Moscow
+
+# Сеть для связи между сервисами
+networks:
+  inventory-network:
+    driver: bridge
