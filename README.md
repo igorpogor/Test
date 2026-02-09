@@ -1,129 +1,106 @@
-# Проект Микросервисов Инвентаря
+# Subscription Service
 
-Этот проект демонстрирует микросервисную архитектуру с использованием gRPC и REST шлюза.
+REST API service for managing user subscriptions with PostgreSQL database.
 
-## Структура Проекта
+## Features
+
+- CRUDL operations for subscriptions
+- Aggregation of subscription costs by period
+- PostgreSQL database with migrations
+- Swagger documentation
+- Docker Compose support
+- Logging with logrus
+- Configuration via .env file
+
+## Requirements
+
+- Go 1.21+
+- Docker and Docker Compose
+- PostgreSQL 15+
+
+## Installation
+
+### Using Docker Compose (Recommended)
+
+1. Clone the repository
+2. Run `docker-compose up --build`
+3. The service will be available at `http://localhost:8080`
+4. Swagger documentation at `http://localhost:8080/swagger/index.html`
+
+### Local Development
+
+1. Install dependencies: `go mod download`
+2. Set up PostgreSQL database
+3. Create `.env` file with your configuration
+4. Run migrations manually if needed
+5. Start the server: `go run cmd/server/main.go`
+
+## API Endpoints
+
+- `POST /subscriptions` - Create a new subscription
+- `GET /subscriptions/{id}` - Get subscription by ID
+- `GET /subscriptions` - List all subscriptions
+- `PUT /subscriptions/{id}` - Update subscription
+- `DELETE /subscriptions/{id}` - Delete subscription
+- `GET /subscriptions/aggregate` - Aggregate total price by filters
+
+## Example Request
+
+```json
+{
+  "service_name": "Yandex Plus",
+  "price": 400,
+  "user_id": "60601fee-2bf1-4721-ae6f-7636e79a0cba",
+  "start_date": "07-2025"
+}
+```
+
+## Configuration
+
+Edit `.env` file for configuration:
+
+```env
+SERVER_PORT=8080
+DB_HOST=postgres
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_NAME=subscription_db
+DB_SSL_MODE=disable
+LOG_LEVEL=debug
+```
+
+## Database Migrations
+
+Migrations are located in the `migrations/` directory and are automatically applied when using Docker Compose.
+
+## Swagger Documentation
+
+Swagger documentation is available at `/swagger/index.html` when the service is running.
+
+## Project Structure
 
 ```
 .
-├── proto/                # Определения Protocol Buffer
-│   └── inventory.proto   # Контракт gRPC сервиса
-├── gen/                  # Сгенерированный Go код из proto
-│   ├── inventory.pb.go   # Сообщения Protocol Buffer
-│   └── inventory_grpc.pb.go # Определения gRPC сервиса
 ├── cmd/
-│   ├── server/           # Реализация gRPC сервера
-│   │   └── main.go       # Сервис инвентаря с встроенной БД
-│   └── client/           # REST шлюз
-│       └── main.go       # HTTP сервер, который перенаправляет запросы к gRPC
-├── go.mod                # Определение Go модуля
-├── go.sum                # Контрольные суммы зависимостей Go
-└── README.md             # Этот файл
+│   └── server/          # Main server application
+├── internal/
+│   ├── config/          # Configuration
+│   ├── database/        # Database connection
+│   ├── handlers/        # HTTP handlers
+│   ├── models/          # Data models
+│   ├── repositories/    # Database repositories
+│   └── services/        # Business logic
+├── migrations/          # Database migrations
+├── docs/                # Swagger documentation
+├── .env                 # Environment variables
+└── docker-compose.yml   # Docker Compose configuration
 ```
 
-## Реализованные Возможности
+## Testing
 
-### 1. gRPC Сервер (cmd/server/main.go)
-- **Встроенная База Данных**: Использует `map[string]int32` для хранения количества товаров
-- **Потокобезопасность**: Защищено с помощью `sync.RWMutex` для предотвращения race condition
-- **Graceful Shutdown**: Обрабатывает сигналы `SIGINT` и `SIGTERM`
-- **Логирование**: Использует стандартную библиотеку `log/slog` с выводом в JSON
-- **gRPC Reflection**: Включено для отладки и интроспекции
+The service includes comprehensive logging and error handling. Check logs for debugging information.
 
-### 2. REST Шлюз (cmd/client/main.go)
-- **HTTP Сервер**: Слушает порт 8080
-- **gRPC Клиент**: Подключается к gRPC серверу на порту 50051
-- **Endpoint**: `/stock?product_id={id}` возвращает JSON ответ
-- **Graceful Shutdown**: Правильно обрабатывает сигналы завершения
-- **Обработка Ошибок**: Возвращает соответствующие HTTP статус-коды
-- **Логирование**: Последовательное JSON логирование с помощью slog
+## License
 
-### 3. Protocol Buffers (proto/inventory.proto)
-- **Определение Сервиса**: `InventoryService` с RPC методом `GetStock`
-- **Сообщения**: `StockRequest` и `StockResponse`
-- **Пакет**: `inventory` с путем Go пакета `./gen;inventory`
-
-## Как Запустить
-
-### Предварительные Требования
-- Go 1.25+
-- Protocol Buffer Compiler (protoc)
-- gRPC Go plugins
-- Docker и Docker Compose (для контейнерного запуска)
-
-### Запуск Сервисов
-
-#### Вариант 1: Локальный запуск (без Docker)
-
-1. **Запуск gRPC Сервера**:
-```bash
-go run cmd/server/main.go
-```
-
-2. **Запуск REST Шлюза** (в другом терминале):
-```bash
-go run cmd/client/main.go
-```
-
-#### Вариант 2: Запуск с Docker (рекомендуется)
-
-```bash
-# Собрать и запустить оба сервиса одной командой
-docker-compose up --build
-
-# Для запуска в фоновом режиме
-docker-compose up --build -d
-
-# Для остановки сервисов
-docker-compose down
-```
-
-### Тестирование API
-
-```bash
-# Получить количество товара product1 (новый маршрут с параметром в пути)
-curl "http://localhost:8080/stock/product1"
-
-# Ожидаемый ответ:
-# {"product_id":"product1","quantity":100}
-```
-
-### Примеры Ответов
-
-- **Успех**:
-```json
-{"product_id":"product1","quantity":100}
-```
-
-- **Товар Не Найден**:
-```json
-{"product_id":"unknown","quantity":0}
-```
-
-- **Отсутствует Параметр**:
-```json
-{"error":"Необходим параметр id в маршруте"}
-```
-
-### Docker Конфигурация
-
-- **Dockerfile.server**: Конфигурация для сборки gRPC сервера
-- **Dockerfile.client**: Конфигурация для сборки REST шлюза
-- **docker-compose.yml**: Оркестрация обоих сервисов с сетью
-
-```bash
-# Посмотреть логи работающих контейнеров
-docker-compose logs -f
-
-# Пересобрать и перезапустить сервисы
-docker-compose up --build --force-recreate
-```
-
-## Технические Особенности
-
-1. **Предотвращение Race Condition**: Использует `sync.RWMutex` для потокобезопасного доступа к встроенной базе данных
-2. **Graceful Shutdown**: Оба сервиса правильно обрабатывают сигналы `SIGINT` и `SIGTERM`
-3. **Структурированное Логирование**: Логирование в формате JSON для лучшей наблюдаемости
-4. **Обработка Ошибок**: Всесторонняя обработка ошибок на всех уровнях
-5. **Управление Таймаутами**: Контекстные таймауты для gRPC вызовов
-6. **Стандартная Структура**: Следует лучшим практикам структуры Go проектов
+MIT

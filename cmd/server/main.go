@@ -1,100 +1,43 @@
 package main
 
 import (
-	inventory "Study/gen"
-	"context"
-	"log/slog"
-	"net"
-	"os"
-	"os/signal"
-	"sync"
-	"syscall"
+	"log"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
+	_ "subscription-service/docs"
+	"subscription-service/internal/config"
+	"subscription-service/internal/database"
+	"subscription-service/internal/handlers"
+	"subscription-service/internal/repositories"
+	"subscription-service/internal/services"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-// InventoryServer - сервер инвентаря с встроенной базой данных
-type InventoryServer struct {
-	inventory.UnimplementedInventoryServiceServer
-	mu      sync.RWMutex     // Мьютекс для защиты от race condition
-	stockDB map[string]int32 // Встроенная база данных (product_id -> количество)
-}
-
-// NewInventoryServer - создает новый экземпляр сервера инвентаря
-func NewInventoryServer() *InventoryServer {
-	return &InventoryServer{
-		stockDB: make(map[string]int32),
-	}
-}
-
-// GetStock - получает количество товара по его ID
-func (s *InventoryServer) GetStock(ctx context.Context, req *inventory.StockRequest) (*inventory.StockResponse, error) {
-	s.mu.RLock()         // Блокировка для чтения
-	defer s.mu.RUnlock() // Разблокировка при выходе
-
-	quantity, exists := s.stockDB[req.GetProductId()]
-	if !exists {
-		slog.Warn("Товар не найден", "product_id", req.GetProductId())
-		return &inventory.StockResponse{Quantity: 0}, nil
-	}
-
-	slog.Info("Получено количество товара", "product_id", req.GetProductId(), "quantity", quantity)
-	return &inventory.StockResponse{Quantity: quantity}, nil
-}
-
-// AddStock - добавляет товар в базу данных
-func (s *InventoryServer) AddStock(productID string, quantity int32) {
-	s.mu.Lock()         // Блокировка для записи
-	defer s.mu.Unlock() // Разблокировка при выходе
-	s.stockDB[productID] = quantity
-	slog.Info("Товар добавлен в базу", "product_id", productID, "quantity", quantity)
-}
-
 func main() {
-	// Инициализация логгера
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	slog.SetDefault(logger)
+	cfg := config.LoadConfig()
 
-	// Создание сервера
-	server := NewInventoryServer()
+	db := database.NewDatabaseConnection(cfg)
 
-	// Добавление начальных данных в базу
-	server.AddStock("product1", 100)
-	server.AddStock("product2", 50)
-	server.AddStock("product3", 75)
+	subscriptionRepo := repositories.NewSubscriptionRepository(db)
 
-	// Создание gRPC сервера
-	grpcServer := grpc.NewServer()
-	inventory.RegisterInventoryServiceServer(grpcServer, server)
+	subscriptionService := services.NewSubscriptionService(subscriptionRepo)
 
-	// Включение рефлексии для отладки
-	reflection.Register(grpcServer)
+	subscriptionHandler := handlers.NewSubscriptionHandler(subscriptionService)
 
-	// Запуск прослушивания порта
-	listener, err := net.Listen("tcp", ":50051")
-	if err != nil {
-		slog.Error("Ошибка при запуске сервера", "error", err)
-		os.Exit(1)
-	}
+	router := gin.Default()
 
-	slog.Info("gRPC сервер запущен", "address", listener.Addr().String())
+	router.Use(cors.Default())
 
-	// Graceful shutdown - правильная остановка сервера
-	go func() {
-		sigint := make(chan os.Signal, 1)
-		signal.Notify(sigint, os.Interrupt, syscall.SIGTERM)
-		<-sigint
+	subscriptionHandler.RegisterRoutes(router)
 
-		slog.Info("Остановка сервера...")
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-		grpcServer.GracefulStop()
-		slog.Info("Сервер остановлен")
-	}()
-
-	// Запуск сервера
-	if err := grpcServer.Serve(listener); err != nil {
-		slog.Error("Ошибка сервера", "error", err)
-		os.Exit(1)
+	log.Printf("Starting server on port %s", cfg.Server.Port)
+	if err := router.Run(":" + cfg.Server.Port); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
 	}
 }
