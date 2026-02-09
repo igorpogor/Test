@@ -1,106 +1,94 @@
 # Subscription Service
 
-REST API service for managing user subscriptions with PostgreSQL database.
+REST API сервис для агрегации данных об онлайн-подписках пользователей.
 
-## Features
+## Возможности
 
-- CRUDL operations for subscriptions
-- Aggregation of subscription costs by period
-- PostgreSQL database with migrations
-- Swagger documentation
-- Docker Compose support
-- Logging with logrus
-- Configuration via .env file
+- CRUDL-операции над записями о подписках
+- Подсчёт суммарной стоимости подписок за выбранный период с фильтрацией
+- PostgreSQL с миграциями для инициализации БД
+- Swagger-документация
+- Запуск через Docker Compose
+- Логирование с помощью logrus (JSON-формат)
+- Конфигурация через `.env` файл
 
-## Requirements
+## Требования
 
-- Go 1.21+
-- Docker and Docker Compose
-- PostgreSQL 15+
+- Docker и Docker Compose
 
-## Installation
+## Запуск
 
-### Using Docker Compose (Recommended)
+```bash
+docker-compose up --build
+```
 
-1. Clone the repository
-2. Run `docker-compose up --build`
-3. The service will be available at `http://localhost:8080`
-4. Swagger documentation at `http://localhost:8080/swagger/index.html`
-
-### Local Development
-
-1. Install dependencies: `go mod download`
-2. Set up PostgreSQL database
-3. Create `.env` file with your configuration
-4. Run migrations manually if needed
-5. Start the server: `go run cmd/server/main.go`
+После запуска:
+- Сервис доступен по адресу: `http://localhost:8080`
+- Swagger-документация: `http://localhost:8080/swagger/index.html`
 
 ## API Endpoints
 
-- `POST /subscriptions` - Create a new subscription
-- `GET /subscriptions/{id}` - Get subscription by ID
-- `GET /subscriptions` - List all subscriptions
-- `PUT /subscriptions/{id}` - Update subscription
-- `DELETE /subscriptions/{id}` - Delete subscription
-- `GET /subscriptions/aggregate` - Aggregate total price by filters
+| Метод    | URL                          | Описание                                  |
+|----------|------------------------------|-------------------------------------------|
+| `POST`   | `/subscriptions`             | Создать подписку                          |
+| `GET`    | `/subscriptions`             | Получить список всех подписок             |
+| `GET`    | `/subscriptions/{id}`        | Получить подписку по ID                   |
+| `PUT`    | `/subscriptions/{id}`        | Обновить подписку                         |
+| `DELETE` | `/subscriptions/{id}`        | Удалить подписку                          |
+| `GET`    | `/subscriptions/aggregate`   | Подсчитать суммарную стоимость подписок   |
 
-## Example Request
+## Пример запроса на создание подписки
 
-```json
-{
-  "service_name": "Yandex Plus",
-  "price": 400,
-  "user_id": "60601fee-2bf1-4721-ae6f-7636e79a0cba",
-  "start_date": "07-2025"
-}
+```bash
+curl -X POST http://localhost:8080/subscriptions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "service_name": "Yandex Plus",
+    "price": 400,
+    "user_id": "60601fee-2bf1-4721-ae6f-7636e79a0cba",
+    "start_date": "07-2025"
+  }'
 ```
 
-## Configuration
+## Пример запроса на агрегацию
 
-Edit `.env` file for configuration:
-
-```env
-SERVER_PORT=8080
-DB_HOST=postgres
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=postgres
-DB_NAME=subscription_db
-DB_SSL_MODE=disable
-LOG_LEVEL=debug
+```bash
+curl "http://localhost:8080/subscriptions/aggregate?user_id=60601fee-2bf1-4721-ae6f-7636e79a0cba&start_date=01-2025&end_date=12-2025"
 ```
 
-## Database Migrations
+## Конфигурация
 
-Migrations are located in the `migrations/` directory and are automatically applied when using Docker Compose.
+Переменные окружения (файл `.env`):
 
-## Swagger Documentation
+| Переменная     | Описание                    | По умолчанию    |
+|----------------|-----------------------------|-----------------|
+| `SERVER_PORT`  | Порт сервера                | `8080`          |
+| `DB_HOST`      | Хост базы данных            | `localhost`     |
+| `DB_PORT`      | Порт базы данных            | `5432`          |
+| `DB_USER`      | Пользователь БД             | `postgres`      |
+| `DB_PASSWORD`  | Пароль БД                   | `postgres`      |
+| `DB_NAME`      | Имя базы данных             | `subscription_db` |
+| `DB_SSL_MODE`  | SSL режим                   | `disable`       |
+| `LOG_LEVEL`    | Уровень логирования         | `info`          |
 
-Swagger documentation is available at `/swagger/index.html` when the service is running.
+## Миграции
 
-## Project Structure
+Миграции расположены в директории `migrations/` и автоматически применяются при запуске через Docker Compose (через `docker-entrypoint-initdb.d`).
+
+## Структура проекта
 
 ```
 .
-├── cmd/
-│   └── server/          # Main server application
+├── cmd/server/               # Точка входа приложения
 ├── internal/
-│   ├── config/          # Configuration
-│   ├── database/        # Database connection
-│   ├── handlers/        # HTTP handlers
-│   ├── models/          # Data models
-│   ├── repositories/    # Database repositories
-│   └── services/        # Business logic
-├── migrations/          # Database migrations
-├── docs/                # Swagger documentation
-├── .env                 # Environment variables
-└── docker-compose.yml   # Docker Compose configuration
-```
-
-## Testing
-
-The service includes comprehensive logging and error handling. Check logs for debugging information.
-
-## License
-
-MIT
+│   ├── config/               # Загрузка конфигурации
+│   ├── database/             # Подключение к БД
+│   ├── handlers/             # HTTP-обработчики
+│   ├── models/               # Модели данных
+│   ├── repositories/         # Слой доступа к данным
+│   └── services/             # Бизнес-логика
+├── migrations/               # SQL-миграции
+├── docs/                     # Swagger-документация
+├── .env                      # Переменные окружения
+├── Dockerfile                # Сборка Docker-образа
+└── docker-compose.yml        # Конфигурация Docker Compose

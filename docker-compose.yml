@@ -35,8 +35,6 @@ services:
       - SERVER_PORT=8080
       - LOG_LEVEL=debug
     restart: unless-stopped
-    volumes:
-      - ./.env:/app/.env
 
 volumes:
   postgres_data:

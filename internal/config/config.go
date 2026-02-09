@@ -1,13 +1,13 @@
 package config
 
 import (
-	"log"
 	"os"
 
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 )
 
+// Config holds all configuration for the application
 type Config struct {
 	Server struct {
 		Port string
@@ -25,25 +25,25 @@ type Config struct {
 	}
 }
 
+// LoadConfig loads configuration from environment variables and .env file
 func LoadConfig() *Config {
 	err := godotenv.Load()
 	if err != nil {
-		log.Printf("Warning: Could not load .env file: %v", err)
+		logrus.Warnf("Could not load .env file: %v (using environment variables)", err)
+	} else {
+		logrus.Info("Loaded configuration from .env file")
 	}
 
-	logLevel := os.Getenv("LOG_LEVEL")
-	if logLevel == "" {
-		logLevel = "info"
-	}
-
+	logLevel := getEnv("LOG_LEVEL", "info")
 	level, err := logrus.ParseLevel(logLevel)
 	if err != nil {
 		level = logrus.InfoLevel
+		logrus.Warnf("Invalid log level '%s', defaulting to 'info'", logLevel)
 	}
 	logrus.SetLevel(level)
 	logrus.SetFormatter(&logrus.JSONFormatter{})
 
-	return &Config{
+	cfg := &Config{
 		Server: struct {
 			Port string
 		}{
@@ -70,6 +70,11 @@ func LoadConfig() *Config {
 			Level: logLevel,
 		},
 	}
+
+	logrus.Infof("Configuration loaded: server_port=%s, db_host=%s, db_port=%s, db_name=%s, log_level=%s",
+		cfg.Server.Port, cfg.Database.Host, cfg.Database.Port, cfg.Database.Name, cfg.Logging.Level)
+
+	return cfg
 }
 
 func getEnv(key, defaultValue string) string {

@@ -1,55 +1,82 @@
+basePath: /
 definitions:
   models.AggregateResponse:
+    description: Response body containing the total subscription cost
     properties:
       total_price:
+        example: 1200
         type: integer
+    type: object
+  models.ErrorResponse:
+    description: Error response
+    properties:
+      error:
+        example: error message
+        type: string
     type: object
   models.SubscriptionRequest:
+    description: Request body for creating or updating a subscription
     properties:
       end_date:
+        example: "12-2025"
         type: string
       price:
-        minimum: 0
+        example: 400
+        minimum: 1
         type: integer
       service_name:
+        example: Yandex Plus
         type: string
       start_date:
+        example: "07-2025"
         type: string
       user_id:
+        example: 60601fee-2bf1-4721-ae6f-7636e79a0cba
         type: string
     required:
-    - price
-    - service_name
-    - start_date
-    - user_id
+      - price
+      - service_name
+      - start_date
+      - user_id
     type: object
   models.SubscriptionResponse:
+    description: Response body containing subscription data
     properties:
       created_at:
         type: string
       end_date:
+        example: "12-2025"
         type: string
       id:
+        example: 550e8400-e29b-41d4-a716-446655440000
         type: string
       price:
+        example: 400
         type: integer
       service_name:
+        example: Yandex Plus
         type: string
       start_date:
+        example: "07-2025"
         type: string
       updated_at:
         type: string
       user_id:
+        example: 60601fee-2bf1-4721-ae6f-7636e79a0cba
         type: string
     type: object
+host: localhost:8080
 info:
   contact: {}
+  description: REST API service for aggregating user online subscription data.
+  title: Subscription Service API
+  version: "1.0"
 paths:
   /subscriptions:
     get:
       description: Get a list of all subscriptions
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
@@ -60,25 +87,23 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/models.ErrorResponse'
       summary: Get all subscriptions
       tags:
-      - subscriptions
+        - subscriptions
     post:
       consumes:
-      - application/json
+        - application/json
       description: Create a new subscription record
       parameters:
-      - description: Subscription data
-        in: body
-        name: subscription
-        required: true
-        schema:
-          $ref: '#/definitions/models.SubscriptionRequest'
+        - description: Subscription data
+          in: body
+          name: subscription
+          required: true
+          schema:
+            $ref: '#/definitions/models.SubscriptionRequest'
       produces:
-      - application/json
+        - application/json
       responses:
         "201":
           description: Created
@@ -87,95 +112,51 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/models.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/models.ErrorResponse'
       summary: Create a new subscription
       tags:
-      - subscriptions
+        - subscriptions
   /subscriptions/{id}:
     delete:
       description: Delete a subscription by ID
       parameters:
-      - description: Subscription ID
-        in: path
-        name: id
-        required: true
-        type: string
+        - description: Subscription ID (UUID)
+          in: path
+          name: id
+          required: true
+          type: string
       responses:
         "204":
           description: No Content
-          schema:
-            type: string
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/models.ErrorResponse'
       summary: Delete a subscription
       tags:
-      - subscriptions
+        - subscriptions
     get:
       description: Get subscription details by ID
       parameters:
-      - description: Subscription ID
-        in: path
-        name: id
-        required: true
-        type: string
+        - description: Subscription ID (UUID)
+          in: path
+          name: id
+          required: true
+          type: string
       produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.SubscriptionResponse'
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Get a subscription by ID
-      tags:
-      - subscriptions
-    put:
-      consumes:
-      - application/json
-      description: Update subscription details
-      parameters:
-      - description: Subscription ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Updated subscription data
-        in: body
-        name: subscription
-        required: true
-        schema:
-          $ref: '#/definitions/models.SubscriptionRequest'
-      produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
@@ -184,46 +165,79 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/models.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/models.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Get a subscription by ID
+      tags:
+        - subscriptions
+    put:
+      consumes:
+        - application/json
+      description: Update subscription details by ID
+      parameters:
+        - description: Subscription ID (UUID)
+          in: path
+          name: id
+          required: true
+          type: string
+        - description: Updated subscription data
+          in: body
+          name: subscription
+          required: true
+          schema:
+            $ref: '#/definitions/models.SubscriptionRequest'
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SubscriptionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
       summary: Update a subscription
       tags:
-      - subscriptions
+        - subscriptions
   /subscriptions/aggregate:
     get:
-      description: Calculate total price of subscriptions with optional filters
+      description: Calculate total price of subscriptions for a selected period with
+        optional filtering by user ID and service name
       parameters:
-      - description: User ID to filter by
-        in: query
-        name: user_id
-        type: string
-      - description: Service name to filter by
-        in: query
-        name: service_name
-        type: string
-      - description: Start date (MM-YYYY) to filter by
-        in: query
-        name: start_date
-        type: string
-      - description: End date (MM-YYYY) to filter by
-        in: query
-        name: end_date
-        type: string
+        - description: User ID (UUID) to filter by
+          in: query
+          name: user_id
+          type: string
+        - description: Service name to filter by
+          in: query
+          name: service_name
+          type: string
+        - description: Start date (MM-YYYY) of the period
+          in: query
+          name: start_date
+          type: string
+        - description: End date (MM-YYYY) of the period
+          in: query
+          name: end_date
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
@@ -232,16 +246,12 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/models.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/models.ErrorResponse'
       summary: Aggregate total price of subscriptions
       tags:
-      - subscriptions
+        - subscriptions
 swagger: "2.0"
